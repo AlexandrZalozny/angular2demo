@@ -1,0 +1,48 @@
+<!DOCTYPE html>
+<html>
+
+    <head>
+        <title>Angular 2 QuickStart</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/twitter-bootstrap/3.3.6/css/bootstrap.css"/>
+    
+
+        <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/2.2.0/jquery.js"></script>
+        <script src="https://cdnjs.cloudflare.com/ajax/libs/twitter-bootstrap/3.3.6/js/bootstrap.js"></script>
+
+        <!-- 1. Ƞ䱳該㡡颫鯲櫨 -->
+        <script src="node_modules/angular2/bundles/angular2-polyfills.js"></script>
+        <script src="node_modules/systemjs/dist/system.src.js"></script>
+        <script src="node_modules/rxjs/bundles/Rx.js"></script>
+        <script src="node_modules/angular2/bundles/angular2.dev.js"></script>
+        <script src="node_modules/angular2/bundles/http.dev.js"></script>
+        <script src="node_modules/angular2/bundles/router.dev.js"></script>
+
+        <script src="node_modules/ng2-bs3-modal/bundles/ng2-bs3-modal.js"></script>
+
+        <!-- 2. Π򳱮곥 SystemJS -->
+        <script>
+            System.config({
+                packages: {
+                    app: {
+                        format: 'register',
+                        defaultExtension: 'js'
+                    }
+                }
+            });
+            System.import('app/boot')
+                    .then(null, console.error.bind(console));
+            /* System.config({
+             defaultJSExtensions: true
+             });*/
+        </script>
+
+    </head>
+
+    <!-- 3. ϲᨨ󣡯񩬮禭飠-->
+    <body>
+        <div class="container">
+    <app>Loading...</app>
+        </div>
+</body>
+
+</html>
