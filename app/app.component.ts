@@ -1,11 +1,12 @@
 import {Component, ViewChild } from 'angular2/core';
+import {NgClass} from 'angular2/common';
 import {UserService} from './user.service';
 import {Logger} from './logger';
 
 import {Observable} from 'rxjs/Observable';
 import {Subject} from 'rxjs/Subject';
 
-import {Http, Response, Headers, ConnectionBackend, HTTP_PROVIDERS} from 'angular2/http';
+import {Http, Response, Headers, RequestOptions, URLSearchParams, ConnectionBackend, HTTP_PROVIDERS} from 'angular2/http';
 import 'rxjs/add/operator/map';
 import { MODAL_DIRECTIVES, ModalComponent } from 'ng2-bs3-modal/ng2-bs3-modal';
 
@@ -24,13 +25,22 @@ export class AppComponent {
     greetings: string = 'World';
     //user: User;
     http: Http;
-    orgs: Org[] = [];
+    orgs: any[];//Org[] = [];
     @ViewChild('myModal')
     modal: ModalComponent;
     typeAction: string = '';
     org: Org;
     relations: Array<number> = [];
-
+    pageList: Array<number> = [1, 2, 3, 4, 5, 100];
+    indexPageList: number = 0;
+    currentPage: number = 1;
+    pages: Array<number> = [1];
+    maxPage: number = 1;
+    allRowCount: number = 0;
+    firstRowNumber: number = 0;
+    lastRowNumber: number = 0;
+    oldTitle: string = '';
+    loading: boolean = true;
 
     constructor(userService: UserService, http: Http) {
         this.user = userService.getCurrent();
@@ -41,17 +51,58 @@ export class AppComponent {
     }
     getOrgs() {
 
-        //this.orgs =[{"id":1,"title":"this is item111","description":"some value here"},{"id":2,"title":"this is item 22","description":"some value here 2"}];
-        this.http.get('http://ang-grid/ang2/ang.php').map((res: Response) =>
-            res.json()).subscribe(res => {
-                var i: number = 0;
-                for (var key in res) {
-                    this.orgs[i] = res[key];
-                    this.relations[i] = parseInt(key, 10);
-                    i++;
+        let params: URLSearchParams = new URLSearchParams();
+        params.set('page', this.currentPage);
+        params.set('count_rec', this.pageList[this.indexPageList]);
+
+        this.loading = true;
+
+        this.http.get('http://ang-grid/ang2/ang.php', { 'search': params }).map((res: Response) =>
+            res.json()).subscribe(
+            res => {
+                this.orgs = res.rows;
+                this.allRowCount = res.total;
+                this.firstRowNumber = (this.currentPage - 1) * this.pageList[this.indexPageList] + 1;
+                this.lastRowNumber = this.currentPage * this.pageList[this.indexPageList];
+                if (this.firstRowNumber > this.allRowCount) {
+                    this.firstRowNumber = this.allRowCount;
                 }
-                console.log(this.relations);
-            });
+                if (this.lastRowNumber > this.allRowCount) {
+                    this.lastRowNumber = this.allRowCount;
+                }
+
+                let pages: number = Math.ceil(res.total / this.pageList[this.indexPageList]);
+                if (pages < 1) {
+                    pages = 1;
+                }
+                this.maxPage = pages;
+                let aPages: Array<number> = [];
+                if (pages <= 5) {
+                    for (let i = 1; i <= pages; i++) {
+                        aPages.push(i);
+                    }
+                } else {
+                    let i = this.currentPage;
+                    aPages.push(i);
+                    let j = 1;
+                    while (aPages.length < 5) {
+                        if (i - j > 0) {
+                            aPages.push(i - j);
+                        }
+                        if (i + j <= this.maxPage && aPages.length < 5) {
+                            aPages.push(i + j);
+                        }
+                        j++;
+
+                    }
+                    aPages.sort((n1, n2) => n1 - n2);
+                }
+
+                this.pages = aPages;
+                this.loading = false;
+
+            }
+            );
 
     }
 
@@ -60,14 +111,12 @@ export class AppComponent {
         this.modal.open();
     }
 
-    edit(id) {
-
-        if (id == 0) {
+    edit(index) {
+        if (index == -1) {
             this.typeAction = 'Добавление';
             this.org = new Org();
         } else {
             this.typeAction = 'Редактирование';
-            var index: number = this.relations.indexOf(id);
             var org = this.orgs[index];
             var clone = new Org();
             for (var key in org) {
@@ -81,22 +130,24 @@ export class AppComponent {
     }
 
     itemSave(id) {
+        this.loading = true;
         this.http.post('http://ang-grid/ang2/ang.php?action=save', JSON.stringify(this.org)).map((res: Response) =>
             res.json()).subscribe(res => {
-                var i = this.getIndex(res['id']);
-                if (i > -1) {
-                    this.orgs[i] = res;
+                if (id == 0) {
+                    this.getOrgs();
                 } else {
-                    this.orgs.push(res);
-                }
+                    this.org = res;
 
+
+                }
             });
         this.modal.close();
+        this.loading = false;
     }
 
     getIndex(id) {
         for (var i = 0; i < this.orgs.length; i++) {
-            var org = this.orgs[i];
+            let org = this.orgs[i];
             if (org.id == id) {
                 return i;
             }
@@ -104,6 +155,52 @@ export class AppComponent {
 
         return -1;
     }
+
+    selectOrg(id) {
+        if (this.loading == false) {
+            let index = this.getIndex(id);
+            this.org = this.orgs[index];
+        }
+    }
+
+    changePageList(index) {
+        if (index != this.indexPageList) {
+            this.indexPageList = index;
+            this.currentPage = 1;
+            this.getOrgs();
+        }
+    }
+
+    setPageClasses(i) {
+        return { 'active': this.currentPage == i };
+    }
+    changePage(page) {
+        if (this.currentPage !== page && page !== 0 && page <= this.maxPage) {
+            this.currentPage = page;
+            this.getOrgs();
+        }
+    }
+    onKeyPressTitle(event, id) {
+        if (event.keyCode == 13) {
+            this.itemSave(id);
+            this.oldTitle = this.org.title;
+        } else if (event.keyCode == 27) {
+            this.org.title = this.oldTitle;
+        }
+
+    }
+    onBlurTitle(event, id) {
+        let newValue = event.target.value;
+        if (newValue != this.oldTitle) {
+            this.itemSave(id);
+        }
+    }
+
+    onFocusTitle(event, id) {
+        this.oldTitle = event.target.value;
+
+    }
+
 
 }
 
