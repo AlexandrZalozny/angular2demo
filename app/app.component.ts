@@ -29,7 +29,9 @@ export class AppComponent {
     @ViewChild('myModal')
     modal: ModalComponent;
     typeAction: string = '';
-    org: Org;
+    orgSelect: Org;
+    orgEdit: Org;
+    orgDetails: Org;
     relations: Array<number> = [];
     pageList: Array<number> = [1, 2, 3, 4, 5, 100];
     indexPageList: number = 0;
@@ -45,7 +47,9 @@ export class AppComponent {
     constructor(userService: UserService, http: Http) {
         this.user = userService.getCurrent();
         this.http = http;
-        this.org = new Org();
+        this.orgSelect = new Org();
+        this.orgEdit = new Org();
+        this.orgDetails = new Org();
 
         this.getOrgs();
     }
@@ -114,15 +118,10 @@ export class AppComponent {
     edit(index) {
         if (index == -1) {
             this.typeAction = 'Добавление';
-            this.org = new Org();
+            this.orgSelect = new Org();
         } else {
             this.typeAction = 'Редактирование';
-            var org = this.orgs[index];
-            var clone = new Org();
-            for (var key in org) {
-                clone[key] = org[key];
-            }
-            this.org = clone;
+            this.orgEdit = Object.assign({}, this.orgs[index]);
 
         }
 
@@ -131,13 +130,33 @@ export class AppComponent {
 
     itemSave(id) {
         this.loading = true;
-        this.http.post('http://ang-grid/ang2/ang.php?action=save', JSON.stringify(this.org)).map((res: Response) =>
+        console.log(this.orgSelect['title']);
+        this.http.post('http://ang-grid/ang2/ang.php?action=save', JSON.stringify(this.orgSelect)).map((res: Response) =>
             res.json()).subscribe(res => {
                 if (id == 0) {
                     this.getOrgs();
                 } else {
-                    this.org = res;
 
+                    this.orgDetails = Object.assign({}, res);
+                    this.orgSelect = Object.assign({}, res);
+
+                }
+            });
+        this.modal.close();
+        this.loading = false;
+    }
+
+    formSave(id) {
+        this.loading = true;
+        this.http.post('http://ang-grid/ang2/ang.php?action=save', JSON.stringify(this.orgEdit)).map((res: Response) =>
+            res.json()).subscribe(res => {
+                if (id == 0) {
+                    this.getOrgs();
+                } else {
+                    let index = this.getIndex(res['id']);
+                    this.orgs[index] = Object.assign({}, res);;
+                    this.orgSelect = Object.assign({}, res);
+                    this.orgDetails = Object.assign({}, res);;
 
                 }
             });
@@ -159,7 +178,8 @@ export class AppComponent {
     selectOrg(id) {
         if (this.loading == false) {
             let index = this.getIndex(id);
-            this.org = this.orgs[index];
+            this.orgSelect = this.orgs[index];
+            this.orgDetails = Object.assign({}, this.orgSelect);;
         }
     }
 
@@ -183,9 +203,9 @@ export class AppComponent {
     onKeyPressTitle(event, id) {
         if (event.keyCode == 13) {
             this.itemSave(id);
-            this.oldTitle = this.org.title;
+            this.oldTitle = this.orgSelect.title;
         } else if (event.keyCode == 27) {
-            this.org.title = this.oldTitle;
+            this.orgSelect.title = this.oldTitle;
         }
 
     }
