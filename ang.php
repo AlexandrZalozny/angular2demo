@@ -1,9 +1,8 @@
 <?php
     const FILE_NAME = 'ang.txt';
 
-$action   = isset($_REQUEST['action']) && $_REQUEST['action'];
-$page     = isset($_REQUEST['page']) ? $_REQUEST['page'] : 1;
-$countRec = isset($_REQUEST['count_rec']) ? $_REQUEST['count_rec'] : 1;
+$action = $_REQUEST['action'] ? : '';
+
 
 $textData = file_get_contents(FILE_NAME);
 
@@ -20,6 +19,7 @@ if ($action == 'save') {
         if (!empty($aTextData)) {
             foreach ($aTextData as $index => $row) {
                 if ($row['id'] == $aRawData['id']) {
+                    unset($aRawData['s']);
                     $aTextData[$index] = $aRawData;
                 }
             }
@@ -28,10 +28,28 @@ if ($action == 'save') {
 
     file_put_contents(FILE_NAME, json_encode($aTextData));
 //['status' => 'success', 'total' => $c, 'rows' => $query->getArrayResult()
+    $aRawData['s'] = $aRawData['id'].'#'.rand(0, 9999);
     echo json_encode($aRawData);
-  //  echo json_encode(['status' => 'success', 'total' => count($aTextData), 'rows' => $aTextData[$page]]);
+    //  echo json_encode(['status' => 'success', 'total' => count($aTextData), 'rows' => $aTextData[$page]]);
     die();
 }
+
+if ($action == 'getOne') {
+    $id = $_REQUEST['id'] ? : 0;
+
+    $aTextData = json_decode($textData, true);
+    $aRawData  = [];
+    foreach ($aTextData as $index => $row) {
+        if ($row['id'] == $id) {
+            $aRawData = $aTextData[$index];
+        }
+    }
+    $aRawData['s'] = $aRawData['id'].'#'.rand(0, 9999);
+    echo json_encode($aRawData);
+    die();
+}
+
+
 if ($action == 'add100') {
 
     $data     = file_get_contents("php://input");
@@ -60,6 +78,9 @@ if ($action == 'add100') {
 $aTextData = json_decode($textData, true);
 $rows      = [];
 
+
+$page     = isset($_REQUEST['page']) ? $_REQUEST['page'] : 1;
+$countRec = isset($_REQUEST['count_rec']) ? $_REQUEST['count_rec'] : 1;
 
 if (!empty($aTextData)) {
     $cntRows = count($aTextData);

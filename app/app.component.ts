@@ -1,6 +1,8 @@
 import {Component, ViewChild } from 'angular2/core';
 import {NgClass} from 'angular2/common';
 import {UserService} from './user.service';
+import {OrgService} from './org.service';
+import {Org} from './org';
 import {Logger} from './logger';
 
 import {Observable} from 'rxjs/Observable';
@@ -10,22 +12,23 @@ import {Http, Response, Headers, RequestOptions, URLSearchParams, ConnectionBack
 import 'rxjs/add/operator/map';
 import { MODAL_DIRECTIVES, ModalComponent } from 'ng2-bs3-modal/ng2-bs3-modal';
 
-//import {Org} from './org';
-//import {HTTP_BINDINGS} from 'angular2/http';
+
 
 @Component(
     {
         selector: 'app',
-        providers: [UserService, Logger, Http, ConnectionBackend, HTTP_PROVIDERS, ModalComponent],
+        providers: [OrgService, UserService, Logger, Http, ConnectionBackend, HTTP_PROVIDERS, ModalComponent],
         templateUrl: './app/app.html',
         directives: [MODAL_DIRECTIVES]
     }
 )
 export class AppComponent {
+
+
     greetings: string = 'World';
-    //user: User;
+    user: any;
     http: Http;
-    orgs: any[];//Org[] = [];
+    orgs: Org[] = [];//Org[] = [];
     @ViewChild('myModal')
     modal: ModalComponent;
     typeAction: string = '';
@@ -43,26 +46,25 @@ export class AppComponent {
     lastRowNumber: number = 0;
     oldTitle: string = '';
     loading: boolean = true;
+    url: string = 'http://ang-grid/ang2/ang.php';
 
-    constructor(userService: UserService, http: Http) {
-        this.user = userService.getCurrent();
-        this.http = http;
-        this.orgSelect = new Org();
-        this.orgEdit = new Org();
-        this.orgDetails = new Org();
+    constructor(private orgService: OrgService, private userService: UserService) {
 
-        this.getOrgs();
     }
-    getOrgs() {
 
-        let params: URLSearchParams = new URLSearchParams();
-        params.set('page', this.currentPage);
-        params.set('count_rec', this.pageList[this.indexPageList]);
+    ngOnInit() {
+        this.user = this.userService.getCurrent();
+        //this.http = http;
+        this.orgSelect = this.orgService.getEmpty();
+        this.orgEdit = this.orgService.getEmpty();
+        this.orgDetails = this.orgService.getEmpty();
+
+        this.getListOrgs();
+    }
+    getListOrgs() {
 
         this.loading = true;
-
-        this.http.get('http://ang-grid/ang2/ang.php', { 'search': params }).map((res: Response) =>
-            res.json()).subscribe(
+        this.orgService.getPage(this.currentPage, this.pageList[this.indexPageList]).subscribe(
             res => {
                 this.orgs = res.rows;
                 this.allRowCount = res.total;
@@ -106,65 +108,84 @@ export class AppComponent {
                 this.loading = false;
 
             }
-            );
+        );
+
+        // this.loading = false;
+
 
     }
-
+    /*
+        getOrg(id): Observable<Org> {
+            let params: URLSearchParams = new URLSearchParams();
+            params.set('id', id);
+            return this.http.get(this.url + '?action=getOne', { 'search': params }).map(
+                (res: Response) => res.json()
+            );
+        }
+    */
     modalOpen() {
 
         this.modal.open();
     }
 
-    edit(index) {
-        if (index == -1) {
+    edit(id: number) {
+        this.orgEdit = new Org();
+        if (id == -1) {
             this.typeAction = 'Добавление';
-            this.orgSelect = new Org();
+            this.modal.open();
         } else {
             this.typeAction = 'Редактирование';
-            this.orgEdit = Object.assign({}, this.orgs[index]);
+            this.loading = true;
+            this.orgService.get(id).subscribe(
+                org => {
+                    this.orgEdit = org;
+                    this.loading = false;
+                    this.modal.open();
+                }
+            );
 
         }
 
-        this.modal.open();
+
     }
 
-    itemSave(id) {
+    itemSave(id: number) {
+        let index = this.getIndex(id);
         this.loading = true;
-        console.log(this.orgSelect['title']);
-        this.http.post('http://ang-grid/ang2/ang.php?action=save', JSON.stringify(this.orgSelect)).map((res: Response) =>
-            res.json()).subscribe(res => {
-                if (id == 0) {
-                    this.getOrgs();
-                } else {
+        this.orgService.save(this.orgs[index]).subscribe(
+            org => {
+                this.orgs[index] = org;
 
-                    this.orgDetails = Object.assign({}, res);
-                    this.orgSelect = Object.assign({}, res);
+                this.orgDetails = Object.assign({}, org);
+                this.orgSelect = Object.assign({}, org);
+                this.loading = false;
+            }
+        );
 
-                }
-            });
-        this.modal.close();
-        this.loading = false;
     }
 
-    formSave(id) {
+    formSave(orgEdit: Org) {
         this.loading = true;
-        this.http.post('http://ang-grid/ang2/ang.php?action=save', JSON.stringify(this.orgEdit)).map((res: Response) =>
-            res.json()).subscribe(res => {
-                if (id == 0) {
-                    this.getOrgs();
+        this.orgService.save(orgEdit).subscribe(
+            org => {
+                this.orgDetails = Object.assign({}, org);
+                this.orgSelect = Object.assign({}, org);
+                console.log(orgEdit);
+                if (orgEdit.id == 0) {
+                    this.getListOrgs();
                 } else {
-                    let index = this.getIndex(res['id']);
-                    this.orgs[index] = Object.assign({}, res);;
-                    this.orgSelect = Object.assign({}, res);
-                    this.orgDetails = Object.assign({}, res);;
-
+                    let index = this.getIndex(org.id);
+                    this.orgs[index] = org;
                 }
-            });
-        this.modal.close();
-        this.loading = false;
+
+
+                this.modal.close();
+                this.loading = false;
+            }
+        );
     }
 
-    getIndex(id) {
+    getIndex(id: number): number {
         for (var i = 0; i < this.orgs.length; i++) {
             let org = this.orgs[i];
             if (org.id == id) {
@@ -175,11 +196,20 @@ export class AppComponent {
         return -1;
     }
 
-    selectOrg(id) {
+    onClickRow(id) {
         if (this.loading == false) {
             let index = this.getIndex(id);
-            this.orgSelect = this.orgs[index];
-            this.orgDetails = Object.assign({}, this.orgSelect);;
+            let org = this.orgs[index];
+            if (org.id !== this.orgSelect.id) {
+                this.orgSelect = org;
+                this.loading = true;
+                this.orgService.get(id).subscribe(
+                    org => {
+                        this.orgDetails = org;
+                        this.loading = false;
+                    }
+                );// Object.assign({}, this.orgSelect);;
+            }
         }
     }
 
@@ -187,20 +217,21 @@ export class AppComponent {
         if (index != this.indexPageList) {
             this.indexPageList = index;
             this.currentPage = 1;
-            this.getOrgs();
+            this.getListOrgs();
         }
     }
 
     setPageClasses(i) {
         return { 'active': this.currentPage == i };
     }
+
     changePage(page) {
-        if (this.currentPage !== page && page !== 0 && page <= this.maxPage) {
+        if (this.currentPage !== page && page !== 0 && page <= this.maxPage && this.loading == false) {
             this.currentPage = page;
-            this.getOrgs();
+            this.getListOrgs();
         }
     }
-    onKeyPressTitle(event, id) {
+    onKeyPressTitle(event: Event, id: number) {
         if (event.keyCode == 13) {
             this.itemSave(id);
             this.oldTitle = this.orgSelect.title;
@@ -209,28 +240,18 @@ export class AppComponent {
         }
 
     }
-    onBlurTitle(event, id) {
-        let newValue = event.target.value;
+
+    onBlurTitle(event: Event, id: number) {
+        let newValue: string = event.target.value;
         if (newValue != this.oldTitle) {
             this.itemSave(id);
         }
     }
 
-    onFocusTitle(event, id) {
+    onFocusTitle(event: Event, id: number) {
         this.oldTitle = event.target.value;
 
     }
 
 
 }
-
-class Org {
-    id: number;
-    title: string;
-    description: string;
-
-    constructor() {
-        this.id = 0;
-    }
-}
-
