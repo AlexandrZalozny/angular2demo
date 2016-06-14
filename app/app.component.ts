@@ -36,7 +36,7 @@ export class AppComponent {
     orgEdit: Org;
     orgDetails: Org;
     relations: Array<number> = [];
-    pageList: Array<number> = [1, 2, 3, 4, 5, 100];
+    pageList: Array<number> = [5, 15, 25, 50, 100];
     indexPageList: number = 0;
     currentPage: number = 1;
     pages: Array<number> = [1];
@@ -47,6 +47,9 @@ export class AppComponent {
     oldTitle: string = '';
     loading: boolean = true;
     url: string = 'http://ang-grid/ang2/ang.php';
+    errorMessage: string;
+    sortable: string;
+    sortableType: string;
 
     constructor(private orgService: OrgService, private userService: UserService) {
 
@@ -62,9 +65,9 @@ export class AppComponent {
         this.getListOrgs();
     }
     getListOrgs() {
-
         this.loading = true;
-        this.orgService.getPage(this.currentPage, this.pageList[this.indexPageList]).subscribe(
+        this.orgService.getPage(this.currentPage, this.pageList[this.indexPageList], this.sortable, this.sortableType)
+            .subscribe(
             res => {
                 this.orgs = res.rows;
                 this.allRowCount = res.total;
@@ -105,10 +108,11 @@ export class AppComponent {
                 }
 
                 this.pages = aPages;
-                this.loading = false;
 
-            }
-        );
+            },
+            error => this.errorMessage = <any>error,
+            () => { this.loading = false; }
+            );
 
         // this.loading = false;
 
@@ -124,7 +128,6 @@ export class AppComponent {
         }
     */
     modalOpen() {
-
         this.modal.open();
     }
 
@@ -139,38 +142,54 @@ export class AppComponent {
             this.orgService.get(id).subscribe(
                 org => {
                     this.orgEdit = org;
-                    this.loading = false;
                     this.modal.open();
-                }
+                },
+                error => this.errorMessage = <any>error,
+                () => { this.loading = false; }
             );
-
         }
+    }
 
-
+    remove(id: number) {
+        this.loading = true;
+        this.orgService.remove(id).subscribe(
+            org => {
+            },
+            error => {
+                this.errorMessage = <any>error;
+                this.getListOrgs();
+            },
+            () => {
+                this.getListOrgs();
+                this.loading = false;
+            }
+        );
     }
 
     itemSave(id: number) {
         let index = this.getIndex(id);
         this.loading = true;
-        this.orgService.save(this.orgs[index]).subscribe(
+        this.orgService.save(this.orgs[index])
+            .subscribe(
             org => {
                 this.orgs[index] = org;
-
                 this.orgDetails = Object.assign({}, org);
                 this.orgSelect = Object.assign({}, org);
-                this.loading = false;
-            }
-        );
+            },
+            error => this.errorMessage = <any>error,
+            () => { this.loading = false; }
+            );
 
     }
 
     formSave(orgEdit: Org) {
         this.loading = true;
-        this.orgService.save(orgEdit).subscribe(
+        this.orgService.save(orgEdit)
+            .subscribe(
             org => {
                 this.orgDetails = Object.assign({}, org);
                 this.orgSelect = Object.assign({}, org);
-                console.log(orgEdit);
+
                 if (orgEdit.id == 0) {
                     this.getListOrgs();
                 } else {
@@ -178,11 +197,13 @@ export class AppComponent {
                     this.orgs[index] = org;
                 }
 
-
+            },
+            error => this.errorMessage = <any>error,
+            () => {
                 this.modal.close();
                 this.loading = false;
             }
-        );
+            );
     }
 
     getIndex(id: number): number {
@@ -200,15 +221,21 @@ export class AppComponent {
         if (this.loading == false) {
             let index = this.getIndex(id);
             let org = this.orgs[index];
+
             if (org.id !== this.orgSelect.id) {
                 this.orgSelect = org;
                 this.loading = true;
                 this.orgService.get(id).subscribe(
                     org => {
                         this.orgDetails = org;
+                    }
+                    ,
+                    error => this.errorMessage = <any>error,
+                    () => {
                         this.loading = false;
                     }
-                );// Object.assign({}, this.orgSelect);;
+
+                );
             }
         }
     }
@@ -232,12 +259,14 @@ export class AppComponent {
         }
     }
     onKeyPressTitle(event: Event, id: number) {
-        if (event.keyCode == 13) {
-            this.itemSave(id);
-            this.oldTitle = this.orgSelect.title;
-        } else if (event.keyCode == 27) {
-            this.orgSelect.title = this.oldTitle;
-        }
+
+        /* if (event.keyCode == 13) {
+             this.itemSave(id);
+             this.oldTitle = this.orgSelect.title;
+         } else if (event.keyCode == 27) {
+             
+             this.orgSelect.title = this.oldTitle;
+         }*/
 
     }
 
@@ -253,5 +282,14 @@ export class AppComponent {
 
     }
 
-
+    onClickTH(column: string) {
+        if (this.sortable == column) {
+            this.sortableType = (this.sortableType == 'asc') ? 'desc' : 'asc';
+        } else {
+            this.sortable = column;
+            this.sortableType = 'asc';
+        }
+        this.currentPage = 1;
+        this.getListOrgs();
+    }
 }

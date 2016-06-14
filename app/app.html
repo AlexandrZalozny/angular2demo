@@ -23,21 +23,41 @@
     {
         overflow: hidden;
     }
+    .fixed-table-container thead th .both {
+        background-image: url('data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABMAAAATCAQAAADYWf5HAAAAkElEQVQoz7X QMQ5AQBCF4dWQSJxC5wwax1Cq1e7BAdxD5SL+Tq/QCM1oNiJidwox0355mXnG/DrEtIQ6azioNZQxI0ykPhTQIwhCR+BmBYtlK7kLJYwWCcJA9M4qdrZrd8pPjZWPtOqdRQy320YSV17OatFC4euts6z39GYMKRPCTKY9UnPQ6P+GtMRfGtPnBCiqhAeJPmkqAAAAAElFTkSuQmCC');
+    }
+
+    .fixed-table-container thead th .asc {
+        background-image: url('data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABMAAAATCAYAAAByUDbMAAAAZ0lEQVQ4y2NgGLKgquEuFxBPAGI2ahhWCsS/gDibUoO0gPgxEP8H4ttArEyuQYxAPBdqEAxPBImTY5gjEL9DM+wTENuQahAvEO9DMwiGdwAxOymGJQLxTyD+jgWDxCMZRsEoGAVoAADeemwtPcZI2wAAAABJRU5ErkJggg==');
+    }
+
+    .fixed-table-container thead th .desc {
+        background-image: url('data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABMAAAATCAYAAAByUDbMAAAAZUlEQVQ4y2NgGAWjYBSggaqGu5FA/BOIv2PBIPFEUgxjB+IdQPwfC94HxLykus4GiD+hGfQOiB3J8SojEE9EM2wuSJzcsFMG4ttQgx4DsRalkZENxL+AuJQaMcsGxBOAmGvopk8AVz1sLZgg0bsAAAAASUVORK5CYII= ');
+    }
+    .sortable{
+        cursor: pointer;
+        background-position: right;
+        background-repeat: no-repeat;
+        padding-right: 30px;
+    }
+
 </style>
 <h1>Hello, {{ greetings }}</h1>
 <h3>Username: {{ user.username }}</h3>
 <h3>Email: {{ user.email }}</h3>
 <br /> 
 <div class="container" >
-
-    <div class="fixed-table-container row-group">
-        <div [ngSwitch]="loading">
-            <div *ngSwitchWhen="true">
-                <span class="glyphicon glyphicon-download-alt"  aria-hidden="true">Идет загрузка</span>
-            </div>
-            <div *ngSwitchWhen="false">
-            </div>
+    <div class="error" *ngIf="errorMessage">{{errorMessage}}</div>
+    <div [ngSwitch]="loading">
+        <div *ngSwitchWhen="true">
+            <span class="glyphicon glyphicon-download-alt"  aria-hidden="true">Идет загрузка</span>
         </div>
+        <div *ngSwitchWhen="false">
+            <span class="glyphicon glyphicon-glyphicon glyphicon-ok"  aria-hidden="true"></span>
+        </div>
+    </div>
+    <div class="fixed-table-container row-group">
+
         <div class="row">
             <button type="button" class="btn btn-default" (click)="edit(-1)" [disabled]="loading">Добавить организацию</button>
         </div>
@@ -46,10 +66,10 @@
                 <table class="table table-striped table-bordered table-hover scrollTable" >
                     <thead class="fixedHeader">
                         <tr>
-                            <th style="width: 50px"><div class="th-inner sortable both">ID</div><div class="fht-cell" style="width: 50px;"></div></th>
-                    <th><div class="th-inner sortable both">Название</div><div class="fht-cell" style="width: 300px;"></div></th>
-                    <th><div class="th-inner sortable both">Описание</div><div class="fht-cell" style="width: 300px;"></div></th> 
-                    <th><div class="th-inner sortable both"></div><div class="fht-cell" style="width: 500px;"></div></th> 
+                            <th><div (click)="onClickTH('id')" class="th-inner sortable both"  [ngClass]="{'asc': sortable == 'id' && sortableType == 'asc', 'desc': sortable == 'id' && sortableType == 'desc' }">ID</div><div ></div><div class="fht-cell" style="width: 100px;"></div></th>
+                    <th><div (click)="onClickTH('title')" class="th-inner sortable both" [ngClass]="{'asc': sortable == 'title' && sortableType == 'asc', 'desc': sortable == 'title' && sortableType == 'desc' }">Название</div><div></div><div class="fht-cell" style="width: 300px;"></div></th>
+                    <th><div (click)="onClickTH('description')" class="th-inner sortable both" [ngClass]="{'asc': sortable == 'description' && sortableType == 'asc', 'desc': sortable == 'description' && sortableType == 'desc' }">Описание</div><div></div><div class="fht-cell" style="width: 500px;"></div></th> 
+                    <th><div class="th-inner"></div><div class="fht-cell" style="width: 50px;"></div></th> 
                     </tr>
                     </thead>
                     <tbody class="scrollContent">
@@ -65,10 +85,11 @@
                                            (keypress)="onKeyPressTitle($event, org.id)" 
                                            [(ngModel)]="org.title"> 
                                 </div></td>
-                            <td><div style="width: 300px;">{{org.description}}</div></td>
+                            <td><div style="width: 500px;">{{org.description}}</div></td>
                             <td>
-                                <div style="width: 500px;">
-                                    <button type="button" class="btn btn-default"  [disabled]="loading" (click)="edit(org.id)">Редактировать #{{org.id}}#{{i}}</button>
+                                <div style="width: 100px;">
+                                    <button type="button" class="btn btn-default" title="Редактировать"  [disabled]="loading" (click)="edit(org.id)"> <span class="glyphicon glyphicon glyphicon-edit" aria-hidden="true" ></span></button>
+                                    <button type="button" class="btn btn-default" title="Удалить" [disabled]="loading" (click)="remove(org.id)"><span class="glyphicon glyphicon glyphicon-remove" aria-hidden="true" ></span></button>
                                 </div>
                             </td>
                         </tr>

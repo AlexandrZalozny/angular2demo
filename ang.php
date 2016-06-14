@@ -1,5 +1,6 @@
 <?php
     const FILE_NAME = 'ang.txt';
+header('Access-Control-Allow-Origin: *');
 
 $action = $_REQUEST['action'] ? : '';
 
@@ -31,6 +32,22 @@ if ($action == 'save') {
     $aRawData['s'] = $aRawData['id'].'#'.rand(0, 9999);
     echo json_encode($aRawData);
     //  echo json_encode(['status' => 'success', 'total' => count($aTextData), 'rows' => $aTextData[$page]]);
+    die();
+}
+
+if ($action == 'remove') {
+    $id = $_REQUEST['id'] ? : 0;
+
+    $aTextData = json_decode($textData, true);
+    foreach ($aTextData as $index => $row) {
+        if ($row['id'] == $id) {
+            unset($aTextData[$index]);
+        }
+    }
+
+    file_put_contents(FILE_NAME, json_encode(array_values($aTextData)));
+
+    echo(json_encode(['status'=>'OK']));
     die();
 }
 
